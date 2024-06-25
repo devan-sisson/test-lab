@@ -1,0 +1,107 @@
+package handle
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+)
+
+// DBConfig represents the database configuration
+type DBConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	DBName   string
+}
+
+var dbConfig = DBConfig{
+	Host:     "419313cb-ae5b-42d9-86e6-4b1424c2a9b1-101a75d149da.dev-database.optilogic.app",
+	Port:     6432,
+	User:     "419313cb-ae5b-42d9-86e6-4b1424c2a9b1_498857c37695",
+	Password: "....",
+	DBName:   "419313cb-ae5b-42d9-86e6-4b1424c2a9b1-101a75d149da",
+}
+
+// Response represents the structure of the JSON response
+type Response struct {
+	Result       string                   `json:"result"`
+	RowCount     int                      `json:"rowCount"`
+	QueryResults []map[string]interface{} `json:"queryResults"`
+}
+
+func main() {
+	r := gin.Default()
+
+	// Endpoint to accept ad-hoc SQL query and return result
+	r.POST("/query", handleQuery)
+
+	// Start server
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+func handleQuery(c *gin.Context) {
+	// Parse request body
+	var queryBody struct {
+		Query string `json:"query" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&queryBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Connect to PostgreSQL database
+
+	connString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=require",
+		dbConfig.Host, dbConfig.Port, dbConfig.User, dbConfig.Password, dbConfig.DBName)
+	db, err := pgx.Connect(c, connString)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to database"})
+		return
+	}
+	defer db.Close(c) // Close the database connection with context
+
+	// Execute SQL query
+	rows, err := db.Query(c, queryBody.Query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute query"})
+		return
+	}
+	defer rows.Close()
+
+	// Get column information
+	colNames := make([]string, len(rows.FieldDescriptions()))
+	for i, fd := range rows.FieldDescriptions() {
+		colNames[i] = string(fd.Name)
+	}
+
+	// Iterate through rows and build JSON response
+	var queryResults []map[string]interface{}
+	for rows.Next() {
+		rowData := make(map[string]interface{})
+		values, err := rows.Values()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"result": "error", "message": "Failed to get row values"})
+			return
+		}
+		for i, value := range values {
+			rowData[colNames[i]] = value
+		}
+		queryResults = append(queryResults, rowData)
+	}
+
+	// Prepare response
+	response := Response{
+		Result:       "success",
+		RowCount:     len(queryResults),
+		QueryResults: queryResults,
+	}
+
+	// Return response
+	c.JSON(http.StatusOK, response)
+}
