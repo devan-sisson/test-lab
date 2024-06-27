@@ -1,0 +1,1 @@
+need to create a go "get env var utility" to get env vars that are set with mixed cases, especially in instances where the env var includes a secret key like: ENV_VAR_f774e4d4e4d2cd74e4de13f. Viper will take the last part and uppercase all of the letters. We need to be able to read in environment variables both ways.
