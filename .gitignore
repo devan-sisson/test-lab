@@ -1,2 +1,7 @@
+# editors
+.idea
+.vscode
+
+# dependency folders
 /**/node_modules
 /**/vendor
