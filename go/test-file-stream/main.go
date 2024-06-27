@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -32,7 +31,7 @@ func ReadZipFromStream(reader io.ReaderAt, size int64) (map[string][]byte, error
 		}
 
 		// Read the file contents into a []byte
-		content, err := ioutil.ReadAll(rc)
+		content, err := io.ReadAll(rc)
 		if err != nil {
 			rc.Close()
 			return nil, fmt.Errorf("failed to read file %s: %v", f.Name, err)
