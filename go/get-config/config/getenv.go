@@ -2,26 +2,9 @@ package config
 
 import (
 	"os"
-	"path"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-
-	"github.com/joho/godotenv"
 )
-
-func init() {
-	_, filename, _, _ := runtime.Caller(0)
-	basepath := filepath.Dir(filename)
-	filepath := path.Join(basepath, "../../.env")
-
-	// In case we are testing, try to load .env using relative path and ignore the error.
-	err := godotenv.Load(filepath)
-	if err != nil && !strings.HasSuffix(err.Error(), "no such file or directory") {
-		panic(err)
-	}
-}
 
 func TryGet(key string) (string, bool) {
 	var value string
